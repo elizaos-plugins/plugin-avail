@@ -3993,13 +3993,14 @@ var submitData_default = {
   description: "Submit data to Avail as per user command",
   handler: async (runtime, message, state, _options, callback) => {
     elizaLogger.log("Starting SUBMIT_DATA handler...");
-    if (!state) {
-      state = await runtime.composeState(message);
+    let currentState = state;
+    if (!currentState) {
+      currentState = await runtime.composeState(message);
     } else {
-      state = await runtime.updateRecentMessageState(state);
+      currentState = await runtime.updateRecentMessageState(currentState);
     }
     const submitDataContext = composeContext({
-      state,
+      state: currentState,
       template: submitDataTemplate
     });
     const content = await generateObjectDeprecated({
@@ -4010,6 +4011,7 @@ var submitData_default = {
     if (content.data != null) {
       try {
         const SEED = runtime.getSetting("AVAIL_SEED");
+        if (!SEED) throw new Error("AVAIL_SEED not set");
         const ENDPOINT = runtime.getSetting("AVAIL_RPC_URL");
         const APP_ID = runtime.getSetting("AVAIL_APP_ID");
         const api = await initialize(ENDPOINT);
@@ -4039,10 +4041,10 @@ var submitData_default = {
           }
         );
         if (txResult.isError) {
-          console.log(`Transaction was not executed`);
+          console.log("Transaction was not executed");
         }
         const error = txResult.dispatchError;
-        if (error != void 0) {
+        if (error !== void 0) {
           if (error.isModule) {
             const decoded = api.registry.findMetaError(
               error.asModule
@@ -4055,7 +4057,7 @@ var submitData_default = {
         }
         elizaLogger.success(
           `Data submitted successfully! tx: 
- Tx Hash: ${txResult.txHash}, Block Hash: ${txResult.status.asFinalized}`
+Tx Hash: ${txResult.txHash}, Block Hash: ${txResult.status.asFinalized}`
         );
         if (callback) {
           callback({
@@ -4184,13 +4186,14 @@ var transfer_default = {
   description: "Transfer AVAIL tokens from the agent's wallet to another address",
   handler: async (runtime, message, state, _options, callback) => {
     elizaLogger2.log("Starting SEND_TOKEN handler...");
-    if (!state) {
-      state = await runtime.composeState(message);
+    let currentState = state;
+    if (!currentState) {
+      currentState = await runtime.composeState(message);
     } else {
-      state = await runtime.updateRecentMessageState(state);
+      currentState = await runtime.updateRecentMessageState(currentState);
     }
     const transferContext = composeContext2({
-      state,
+      state: currentState,
       template: transferTemplate
     });
     const content = await generateObjectDeprecated2({
@@ -4212,17 +4215,16 @@ var transfer_default = {
     if (content.amount != null && content.recipient != null) {
       try {
         const SEED = runtime.getSetting("AVAIL_SEED");
+        if (!SEED) throw new Error("AVAIL_SEED not set");
         const ENDPOINT = runtime.getSetting("AVAIL_RPC_URL");
         const api = await initialize2(ENDPOINT);
         const keyring = getKeyringFromSeed2(SEED);
         const options = { app_id: 0, nonce: -1 };
         const decimals = getDecimals(api);
         const amount = formatNumberToBalance(content.amount, decimals);
-        const oldBalance = await api.query.system.account(
-          content.recipient
-        );
+        const oldBalance = await api.query.system.account(content.recipient);
         elizaLogger2.log(
-          `Balance before the transfer call: ${oldBalance["data"]["free"].toHuman()}`
+          `Balance before the transfer call: ${oldBalance.toString()}`
         );
         const txResult = await new Promise(
           (res) => {
@@ -4242,8 +4244,8 @@ var transfer_default = {
         );
         const error = txResult.dispatchError;
         if (txResult.isError) {
-          elizaLogger2.log(`Transaction was not executed`);
-        } else if (error != void 0) {
+          elizaLogger2.log("Transaction was not executed");
+        } else if (error !== void 0) {
           if (error.isModule) {
             const decoded = api.registry.findMetaError(
               error.asModule
@@ -4256,15 +4258,13 @@ var transfer_default = {
             elizaLogger2.log(error.toString());
           }
         }
-        const newBalance = await api.query.system.account(
-          content.recipient
-        );
+        const newBalance = await api.query.system.account(content.recipient);
         elizaLogger2.log(
-          `Balance after the transfer call: ${newBalance["data"]["free"].toHuman()}`
+          `Balance after the transfer call: ${newBalance.toString()}`
         );
         elizaLogger2.success(
           `Transfer completed successfully! tx: 
- Tx Hash: ${txResult.txHash}, Block Hash: ${txResult.status.asFinalized}`
+Tx Hash: ${txResult.txHash}, Block Hash: ${txResult.status.asFinalized}`
         );
         if (callback) {
           callback({
